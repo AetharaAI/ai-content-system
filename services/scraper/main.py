@@ -11,7 +11,7 @@ from services.shared.database import get_db, create_tables
 from services.shared.models import ScrapedContent, ContentStatus
 from services.shared.config import settings, DEFAULT_SOURCES
 from services.shared.logger import setup_logger
-from services.scrapers import RSScraper, HTMLScraper, JSScraper
+from services.scraper.scrapers import RSScraper, HTMLScraper, JSScraper, BASE_SCRAPERS
 from services.scraper.cleaners import TextCleaner, ContentDeduplicator
 
 app = FastAPI(title="Content Scraper Service", version="1.0.0")
