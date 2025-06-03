@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 class Settings(BaseSettings):
     # Database
-    DATABASE_URL: str = "postgresql://user:pass@localhost:5432/ai_content"
+    DATABASE_URL: str = "postgresql://postgres:Gmccmg#2024@db.mlnzppqqakqvxdopnyhl.supabase.co:5432/postgres"
     REDIS_URL: str = "redis://localhost:6379"
     
     # LLM APIs
