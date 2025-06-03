@@ -12,5 +12,7 @@ COPY . .
 # Expose common port
 EXPOSE 8000
 
+ENV PYTHONPATH="${PYTHONPATH}:/app"
+
 # Default command
 CMD ["python", "services/scraper/main.py"]
