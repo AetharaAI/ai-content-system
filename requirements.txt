@@ -16,3 +16,4 @@ feedparser
 python-multipart>=0.0.5
 beautifulsoup4
 html5lib
+jinja2
