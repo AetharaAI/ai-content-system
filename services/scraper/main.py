@@ -16,6 +16,10 @@ from services.scraper.cleaners import TextCleaner, ContentDeduplicator
 
 app = FastAPI(title="Content Scraper Service", version="1.0.0")
 logger = setup_logger(__name__)
+@app.get("/")
+def read_root():
+    return {"status": "Content Scraper is running", "version": "2.0.0"}
+
 
 app.add_middleware(
     CORSMiddleware,
