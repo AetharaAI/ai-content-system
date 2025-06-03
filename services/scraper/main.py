@@ -7,12 +7,12 @@ from typing import List, Dict
 import logging
 from datetime import datetime, timedelta
 
-from services.shared.database import get_db, create_tables
-from services.shared.models import ScrapedContent, ContentStatus
-from services.shared.config import settings, DEFAULT_SOURCES
-from services.shared.logger import setup_logger
-from services.scrapers import RSScraper, HTMLScraper, JSScraper
-from services.scraper.cleaners import TextCleaner, ContentDeduplicator
+from app.services.shared.database import get_db, create_tables
+from app.services.shared.models import ScrapedContent, ContentStatus
+from app.services.shared.config import settings, DEFAULT_SOURCES
+from app.services.shared.logger import setup_logger
+from app.services.scrapers import RSScraper, HTMLScraper, JSScraper
+from app.services.scraper.cleaners import TextCleaner, ContentDeduplicator
 
 app = FastAPI(title="Content Scraper Service", version="1.0.0")
 logger = setup_logger(__name__)
