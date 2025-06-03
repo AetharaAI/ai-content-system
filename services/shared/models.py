@@ -35,7 +35,7 @@ class ScrapedContent(Base):
     scraped_at = Column(DateTime, default=func.now())
     content_hash = Column(String(64), nullable=False, unique=True)
     status = Column(String(50), default=ContentStatus.SCRAPED)
-    metadata = Column(JSON, default={})
+    meta = Column(JSON, default={})
 
 class ProcessedContent(Base):
     __tablename__ = "processed_content"
@@ -74,7 +74,7 @@ class ProcessingLog(Base):
     service = Column(String(100), nullable=False)
     level = Column(String(20), nullable=False)
     message = Column(Text, nullable=False)
-    metadata = Column(JSON, default={})
+    meta = Column(JSON, default={})
     created_at = Column(DateTime, default=func.now())
 
 # Pydantic Models for API
