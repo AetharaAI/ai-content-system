@@ -1,0 +1,39 @@
+# Git
+.git
+.gitignore
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+target/
+.gradle/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+.env.local
+
+# Build artifacts
+dist/
+build/
+*.jar
+*.war
+
+# Docker
+Dockerfile*
+docker-compose*
+.dockerignore

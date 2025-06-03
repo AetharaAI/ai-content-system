@@ -1,0 +1,169 @@
+{
+  "name": "AI-Content-Automation",
+  "created": "2025-06-03T02:41:29.420496",
+  "files": {
+    "services/shared/config.py": {
+      "language": "python",
+      "size": 1985,
+      "lines": 61,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420412"
+    },
+    "services/shared/models.py": {
+      "language": "python",
+      "size": 3708,
+      "lines": 108,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420430"
+    },
+    "services/shared/database.py": {
+      "language": "python",
+      "size": 2128,
+      "lines": 80,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420435"
+    },
+    "services/shared/logger.py": {
+      "language": "python",
+      "size": 659,
+      "lines": 24,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420438"
+    },
+    "services/scraper/main.py": {
+      "language": "python",
+      "size": 6776,
+      "lines": 203,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420447"
+    },
+    "services/scraper/scrapers/__init__.py": {
+      "language": "python",
+      "size": 334,
+      "lines": 10,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420449"
+    },
+    "services/scraper/scrapers/base_scraper.py": {
+      "language": "python",
+      "size": 1254,
+      "lines": 43,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420452"
+    },
+    "services/scraper/scrapers/rss_scraper.py": {
+      "language": "python",
+      "size": 4152,
+      "lines": 112,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420458"
+    },
+    "services/scraper/scrapers/html_scraper.py": {
+      "language": "python",
+      "size": 3530,
+      "lines": 88,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420463"
+    },
+    "services/scraper/cleaners.py": {
+      "language": "python",
+      "size": 2166,
+      "lines": 65,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420466"
+    },
+    "services/scraper/Dockerfile": {
+      "language": "dockerfile",
+      "size": 434,
+      "lines": 21,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420469"
+    },
+    "config/docker-compose.yml": {
+      "language": "yaml",
+      "size": 1684,
+      "lines": 78,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420473"
+    },
+    "docs/requirements.txt": {
+      "language": "txt",
+      "size": 293,
+      "lines": 15,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420474"
+    },
+    ".env.example": {
+      "language": "env",
+      "size": 893,
+      "lines": 28,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420477"
+    },
+    "scripts/setup.sh": {
+      "language": "bash",
+      "size": 2003,
+      "lines": 65,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420486"
+    },
+    "scripts/quick-start.sh": {
+      "language": "bash",
+      "size": 832,
+      "lines": 32,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420490"
+    },
+    "services/summarizer/Dockerfile": {
+      "language": "dockerfile",
+      "size": 437,
+      "lines": 21,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420492"
+    },
+    "services/publisher/Dockerfile": {
+      "language": "dockerfile",
+      "size": 436,
+      "lines": 21,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420493"
+    },
+    "services/dashboard/Dockerfile": {
+      "language": "dockerfile",
+      "size": 436,
+      "lines": 21,
+      "dependencies": [],
+      "created": "2025-06-03T02:41:29.420495"
+    }
+  },
+  "dependencies": {
+    "services/shared/config.py": [],
+    "services/shared/models.py": [],
+    "services/shared/database.py": [],
+    "services/shared/logger.py": [],
+    "services/scraper/main.py": [],
+    "services/scraper/scrapers/__init__.py": [],
+    "services/scraper/scrapers/base_scraper.py": [],
+    "services/scraper/scrapers/rss_scraper.py": [],
+    "services/scraper/scrapers/html_scraper.py": [],
+    "services/scraper/cleaners.py": [],
+    "services/scraper/Dockerfile": [],
+    "config/docker-compose.yml": [],
+    "docs/requirements.txt": [],
+    ".env.example": [],
+    "scripts/setup.sh": [],
+    "scripts/quick-start.sh": [],
+    "services/summarizer/Dockerfile": [],
+    "services/publisher/Dockerfile": [],
+    "services/dashboard/Dockerfile": []
+  },
+  "language_stats": {
+    "python": 10,
+    "dockerfile": 4,
+    "yaml": 1,
+    "txt": 1,
+    "env": 1,
+    "bash": 2
+  },
+  "total_blocks": 19
+}
