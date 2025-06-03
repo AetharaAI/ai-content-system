@@ -7,12 +7,12 @@ from typing import List, Dict
 import logging
 from datetime import datetime, timedelta
 
-from ..shared.database import get_db, create_tables
-from ..shared.models import ScrapedContent, ContentStatus
-from ..shared.config import settings, DEFAULT_SOURCES
-from ..shared.logger import setup_logger
-from .scrapers import RSScraper, HTMLScraper, JSScraper
-from .cleaners import TextCleaner, ContentDeduplicator
+from services.shared.database import get_db, create_tables
+from services.shared.models import ScrapedContent, ContentStatus
+from services.shared.config import settings, DEFAULT_SOURCES
+from services.shared.logger import setup_logger
+from services.scrapers import RSScraper, HTMLScraper, JSScraper
+from services.scraper.cleaners import TextCleaner, ContentDeduplicator
 
 app = FastAPI(title="Content Scraper Service", version="1.0.0")
 logger = setup_logger(__name__)
@@ -199,6 +199,7 @@ async def start_periodic_scraping():
 from fastapi.responses import HTMLResponse, Response
 from jinja2 import Template
 import json
+from services.publisher.publishers.wordpress_publisher import WordPressPublisher
 
 # WordPress Widget Endpoints
 @app.get("/widgets/wordpress-articles", response_class=HTMLResponse)
