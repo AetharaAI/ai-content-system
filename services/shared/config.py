@@ -22,10 +22,10 @@ class Settings(BaseSettings):
     WORDPRESS_TOKEN: Optional[str] = None
     
     # Service URLs
-    SCRAPER_URL: str = "http://localhost:8001"
-    SUMMARIZER_URL: str = "http://localhost:8002"
-    PUBLISHER_URL: str = "http://localhost:8003"
-    DASHBOARD_URL: str = "http://localhost:8004"
+    SCRAPER_URL: str = os.getenv("SCRAPER_URL","https://ai-content-system.onrender.com")
+    SUMMARIZER_URL: str = os.getenv("SUMMARIZER_URL","https://ai-content-system.onrender.com")
+    PUBLISHER_URL: str = os.getenv("PUBLISHER_URL","https://ai-content-system.onrender.com")
+    DASHBOARD_URL: str = os.getenv("DASHBOARD_URL","https://ai-content-system.onrender.com")
     
     # App Config
     MAX_ARTICLES_PER_SCRAPE: int = 50
