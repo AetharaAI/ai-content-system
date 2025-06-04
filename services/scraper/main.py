@@ -198,7 +198,7 @@ async def periodic_scraping():
  #   asyncio.create_task(periodic_scraping())
 
 @app.on_event("startup")
-@repeat_every(seconds=60 * 60 * 4)
+#@repeat_every(seconds=60 * 60 * 4)
 async def periodic_scraping() -> None:
     db_gen = get_db()
     db = next(db_gen)
