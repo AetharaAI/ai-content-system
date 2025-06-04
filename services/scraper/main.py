@@ -10,6 +10,7 @@ from typing import List, Dict
 import logging
 from datetime import datetime, timedelta
 import json
+import os
 
 from services.shared.database import get_db, create_tables
 from services.shared.models import ScrapedContent, ProcessedContent, ContentStatus
