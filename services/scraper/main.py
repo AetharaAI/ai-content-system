@@ -456,26 +456,28 @@ def estimate_reading_time(text):
     return max(1, round(words / 200))  # Average 200 words per minute
 
 from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session
 from fastapi import Depends
+from sqlalchemy.orm import Session
+
 from services.shared.database import get_db
 from services.shared.models import ScrapedContent
 
 @app.get("/widgets/wordpress_articles", response_class=HTMLResponse)
 def render_wordpress_articles(limit: int = 5, db: Session = Depends(get_db)):
-    articles = (
-        db.query(ScrapedContent)
-        .order_by(ScrapedContent.published_at.desc())
-        .limit(limit)
-        .all()
-    )
+    try:
+        articles = db.query(ScrapedContent) \
+                     .order_by(ScrapedContent.published_at.desc()) \
+                     .limit(limit).all()
 
-    html = "<h3>Latest AI News</h3><ul>"
-    for article in articles:
-        html += f"<li><a href='{article.original_url}' target='_blank'>{article.title}</a></li>"
-    html += "</ul>"
+        html = "<h3>Latest AI News</h3><ul>"
+        for article in articles:
+            html += f'<li><a href="{article.original_url}" target="_blank">{article.title}</a></li>'
+        html += "</ul>"
 
-    return HTMLResponse(content=html)
+        return HTMLResponse(content=html)
+
+    except Exception as e:
+        return HTMLResponse(content=f"<h3>Error loading articles</h3><pre>{e}</pre>", status_code=500)
 
 
 
