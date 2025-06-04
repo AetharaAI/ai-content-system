@@ -193,9 +193,19 @@ async def periodic_scraping():
             logger.error(f"Periodic scraping error: {e}")
             await asyncio.sleep(300)  # Wait 5 minutes on error
 
+#@app.on_event("startup")
+#async def start_periodic_scraping():
+ #   asyncio.create_task(periodic_scraping())
+
 @app.on_event("startup")
-async def start_periodic_scraping():
-    asyncio.create_task(periodic_scraping())
+@repeat_every(seconds=60 * 60 * 4)
+async def periodic_scraping() -> None:
+    db_gen = get_db()
+    db = next(db_gen)
+    try:
+        await orchestrator.scrape_all_sources(db)
+    finally:
+        db_gen.close()
 
 
 # Add this to your services/dashboard/main.py
