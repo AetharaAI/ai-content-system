@@ -15,4 +15,4 @@ EXPOSE 8000
 ENV PYTHONPATH="${PYTHONPATH}:/app"
 
 # Default command
-CMD ["uvicorn", "services.scraper.main:app", "--host", "0.0.0.0", "--port", "10000"]
+#CMD ["uvicorn", "services.scraper.main:app", "--host", "0.0.0.0", "--port", ""]
