@@ -1,14 +1,18 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, Response
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
+from jinja2 import Template
 import asyncio
 import uvicorn
 from typing import List, Dict
 import logging
 from datetime import datetime, timedelta
+import json
 
 from services.shared.database import get_db, create_tables
-from services.shared.models import ScrapedContent, ContentStatus
+from services.shared.models import ScrapedContent, ProcessedContent, ContentStatus
 from services.shared.config import settings, DEFAULT_SOURCES
 from services.shared.logger import setup_logger
 from services.scraper.scrapers import RSScraper, HTMLScraper, JSScraper
@@ -16,10 +20,10 @@ from services.scraper.cleaners import TextCleaner, ContentDeduplicator
 
 app = FastAPI(title="Content Scraper Service", version="1.0.0")
 logger = setup_logger(__name__)
+
 @app.get("/")
 def read_root():
     return {"status": "Content Scraper is running", "version": "2.0.0"}
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -133,10 +137,16 @@ class ScrapingOrchestrator:
 
 orchestrator = ScrapingOrchestrator()
 
+# Fixed startup event
 @app.on_event("startup")
 async def startup_event():
-    create_tables()
-    logger.info("Scraper service started")
+    try:
+        create_tables()
+        logger.info("Scraper service started")
+        # Start periodic scraping as background task
+        asyncio.create_task(periodic_scraping_task())
+    except Exception as e:
+        logger.error(f"Startup error: {e}")
 
 @app.post("/scrape")
 async def trigger_scrape(
@@ -150,8 +160,6 @@ async def trigger_scrape(
 @app.get("/scrape/status")
 async def get_scrape_status(db: Session = Depends(get_db)):
     """Get scraping statistics"""
-    from sqlalchemy import func
-    
     total_scraped = db.query(func.count(ScrapedContent.id)).scalar()
     today_scraped = db.query(func.count(ScrapedContent.id)).filter(
         ScrapedContent.scraped_at >= datetime.utcnow().date()
@@ -178,42 +186,25 @@ async def health_check():
         "version": "1.0.0"
     }
 
-# Background task for periodic scraping
-async def periodic_scraping():
+# Fixed periodic scraping function
+async def periodic_scraping_task():
     """Background task that runs scraping periodically"""
+    logger.info("Starting periodic scraping task")
+    
     while True:
         try:
+            # Use the context manager properly
             with get_db() as db:
-                await orchestrator.scrape_all_sources(db)
+                logger.info("Running periodic scrape")
+                results = await orchestrator.scrape_all_sources(db)
+                logger.info(f"Periodic scrape results: {results}")
             
-            # Wait for next interval
+            # Wait for next interval (4 hours by default)
             await asyncio.sleep(settings.DEFAULT_PUBLISH_INTERVAL * 3600)
             
         except Exception as e:
             logger.error(f"Periodic scraping error: {e}")
             await asyncio.sleep(300)  # Wait 5 minutes on error
-
-#@app.on_event("startup")
-#async def start_periodic_scraping():
- #   asyncio.create_task(periodic_scraping())
-
-@app.on_event("startup")
-#@repeat_every(seconds=60 * 60 * 4)
-async def periodic_scraping() -> None:
-    db_gen = get_db()
-    db = next(db_gen)
-    try:
-        await orchestrator.scrape_all_sources(db)
-    finally:
-        db_gen.close()
-
-
-# Add this to your services/dashboard/main.py
-
-from fastapi.responses import HTMLResponse, Response
-from jinja2 import Template
-import json
-from services.publisher.publishers.wordpress_publisher import WordPressPublisher
 
 # WordPress Widget Endpoints
 @app.get("/widgets/wordpress-articles", response_class=HTMLResponse)
@@ -225,180 +216,160 @@ async def wordpress_articles_widget(
 ):
     """Generate WordPress-compatible article widget"""
     
-    query = db.query(ProcessedContent).join(ScrapedContent).order_by(
-        desc(ProcessedContent.processed_at)
-    )
-    
-    if category:
-        query = query.filter(ProcessedContent.category.ilike(f"%{category}%"))
-    
-    content = query.limit(limit).all()
-    
-    articles = []
-    for item in content:
-        scraped = db.query(ScrapedContent).filter(
-            ScrapedContent.id == item.scraped_content_id
-        ).first()
+    try:
+        # Query scraped content directly since ProcessedContent might not exist yet
+        query = db.query(ScrapedContent).order_by(desc(ScrapedContent.scraped_at))
         
-        articles.append({
-            'id': item.id,
-            'title': item.seo_title,
-            'summary': item.summary[:300] + "..." if len(item.summary) > 300 else item.summary,
-            'description': item.seo_description,
-            'url': scraped.original_url,
-            'date': item.processed_at.strftime('%B %d, %Y'),
-            'time_ago': get_time_ago(item.processed_at),
-            'category': item.category or 'AI News',
-            'hashtags': item.hashtags[:4],  # First 4 hashtags
-            'source': scraped.source_name,
-            'reading_time': estimate_reading_time(item.summary)
-        })
-    
-    # Modern card style template
-    if style == "modern":
-        template = """
-        <div class="ai-central-articles-modern" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px;">
-            <style>
-                .ai-article-card {
-                    background: #fff;
-                    border-radius: 12px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    margin: 20px 0;
-                    padding: 24px;
-                    transition: transform 0.2s, box-shadow 0.2s;
-                    border-left: 4px solid #0073aa;
-                }
-                .ai-article-card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
-                }
-                .ai-article-title {
-                    font-size: 20px;
-                    font-weight: 600;
-                    color: #1a1a1a;
-                    text-decoration: none;
-                    line-height: 1.4;
-                    margin-bottom: 12px;
-                    display: block;
-                }
-                .ai-article-title:hover {
-                    color: #0073aa;
-                }
-                .ai-article-meta {
-                    display: flex;
-                    align-items: center;
-                    gap: 15px;
-                    margin-bottom: 15px;
-                    font-size: 14px;
-                    color: #666;
-                }
-                .ai-article-category {
-                    background: #e3f2fd;
-                    color: #1976d2;
-                    padding: 4px 12px;
-                    border-radius: 20px;
-                    font-size: 12px;
-                    font-weight: 500;
-                }
-                .ai-article-summary {
-                    color: #444;
-                    line-height: 1.6;
-                    margin-bottom: 15px;
-                    font-size: 15px;
-                }
-                .ai-article-hashtags {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                    margin-top: 15px;
-                }
-                .ai-hashtag {
-                    background: #f5f5f5;
-                    color: #0073aa;
-                    padding: 4px 10px;
-                    border-radius: 15px;
-                    font-size: 12px;
-                    text-decoration: none;
-                }
-                .ai-article-footer {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-top: 15px;
-                    padding-top: 15px;
-                    border-top: 1px solid #eee;
-                    font-size: 13px;
-                    color: #888;
-                }
-                @media (max-width: 768px) {
-                    .ai-article-card { padding: 16px; margin: 15px 0; }
-                    .ai-article-title { font-size: 18px; }
-                    .ai-article-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
-                }
-            </style>
-            
-            {% for article in articles %}
-            <div class="ai-article-card">
-                <a href="{{ article.url }}" target="_blank" class="ai-article-title">
-                    {{ article.title }}
-                </a>
+        if category:
+            # Simple category filtering based on source name or title
+            query = query.filter(
+                ScrapedContent.source_name.ilike(f"%{category}%") |
+                ScrapedContent.title.ilike(f"%{category}%")
+            )
+        
+        content = query.limit(limit).all()
+        
+        articles = []
+        for item in content:
+            articles.append({
+                'id': item.id,
+                'title': item.title,
+                'summary': (item.content[:300] + "...") if item.content and len(item.content) > 300 else (item.content or "No summary available"),
+                'description': item.title,  # Use title as description for now
+                'url': item.original_url,
+                'date': item.scraped_at.strftime('%B %d, %Y'),
+                'time_ago': get_time_ago(item.scraped_at),
+                'category': item.source_name,
+                'hashtags': [],  # Empty for now
+                'source': item.source_name,
+                'reading_time': estimate_reading_time(item.content or item.title)
+            })
+        
+        # Modern card style template
+        if style == "modern":
+            template = """
+            <div class="ai-central-articles-modern" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 1200px;">
+                <style>
+                    .ai-article-card {
+                        background: #fff;
+                        border-radius: 12px;
+                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                        margin: 20px 0;
+                        padding: 24px;
+                        transition: transform 0.2s, box-shadow 0.2s;
+                        border-left: 4px solid #0073aa;
+                    }
+                    .ai-article-card:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+                    }
+                    .ai-article-title {
+                        font-size: 20px;
+                        font-weight: 600;
+                        color: #1a1a1a;
+                        text-decoration: none;
+                        line-height: 1.4;
+                        margin-bottom: 12px;
+                        display: block;
+                    }
+                    .ai-article-title:hover {
+                        color: #0073aa;
+                    }
+                    .ai-article-meta {
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                        margin-bottom: 15px;
+                        font-size: 14px;
+                        color: #666;
+                    }
+                    .ai-article-category {
+                        background: #e3f2fd;
+                        color: #1976d2;
+                        padding: 4px 12px;
+                        border-radius: 20px;
+                        font-size: 12px;
+                        font-weight: 500;
+                    }
+                    .ai-article-summary {
+                        color: #444;
+                        line-height: 1.6;
+                        margin-bottom: 15px;
+                        font-size: 15px;
+                    }
+                    .ai-article-footer {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        margin-top: 15px;
+                        padding-top: 15px;
+                        border-top: 1px solid #eee;
+                        font-size: 13px;
+                        color: #888;
+                    }
+                    @media (max-width: 768px) {
+                        .ai-article-card { padding: 16px; margin: 15px 0; }
+                        .ai-article-title { font-size: 18px; }
+                        .ai-article-meta { flex-direction: column; align-items: flex-start; gap: 8px; }
+                    }
+                </style>
                 
-                <div class="ai-article-meta">
-                    <span class="ai-article-category">{{ article.category }}</span>
-                    <span>📅 {{ article.time_ago }}</span>
-                    <span>⏱️ {{ article.reading_time }} min read</span>
-                    <span>📰 {{ article.source }}</span>
-                </div>
-                
-                <div class="ai-article-summary">
-                    {{ article.summary }}
-                </div>
-                
-                {% if article.hashtags %}
-                <div class="ai-article-hashtags">
-                    {% for hashtag in article.hashtags %}
-                    <span class="ai-hashtag">{{ hashtag }}</span>
-                    {% endfor %}
-                </div>
-                {% endif %}
-                
-                <div class="ai-article-footer">
-                    <span>Published {{ article.date }}</span>
-                    <a href="{{ article.url }}" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
-                        Read Full Article →
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        """
-    else:  # Simple list style
-        template = """
-        <div class="ai-central-articles-list" style="font-family: Arial, sans-serif;">
-            {% for article in articles %}
-            <div style="border-bottom: 1px solid #ddd; padding: 20px 0;">
-                <h3 style="margin: 0 0 10px 0;">
-                    <a href="{{ article.url }}" target="_blank" style="color: #0073aa; text-decoration: none;">
+                {% for article in articles %}
+                <div class="ai-article-card">
+                    <a href="{{ article.url }}" target="_blank" class="ai-article-title">
                         {{ article.title }}
                     </a>
-                </h3>
-                <p style="color: #666; margin: 0 0 10px 0; line-height: 1.5;">
-                    {{ article.description }}
-                </p>
-                <div style="font-size: 14px; color: #999;">
-                    <span>{{ article.date }}</span> • 
-                    <span>{{ article.category }}</span> • 
-                    <span>{{ article.source }}</span>
+                    
+                    <div class="ai-article-meta">
+                        <span class="ai-article-category">{{ article.category }}</span>
+                        <span>📅 {{ article.time_ago }}</span>
+                        <span>⏱️ {{ article.reading_time }} min read</span>
+                    </div>
+                    
+                    <div class="ai-article-summary">
+                        {{ article.summary }}
+                    </div>
+                    
+                    <div class="ai-article-footer">
+                        <span>Published {{ article.date }}</span>
+                        <a href="{{ article.url }}" target="_blank" style="color: #0073aa; text-decoration: none; font-weight: 500;">
+                            Read Full Article →
+                        </a>
+                    </div>
                 </div>
+                {% endfor %}
             </div>
-            {% endfor %}
-        </div>
-        """
+            """
+        else:  # Simple list style
+            template = """
+            <div class="ai-central-articles-list" style="font-family: Arial, sans-serif;">
+                {% for article in articles %}
+                <div style="border-bottom: 1px solid #ddd; padding: 20px 0;">
+                    <h3 style="margin: 0 0 10px 0;">
+                        <a href="{{ article.url }}" target="_blank" style="color: #0073aa; text-decoration: none;">
+                            {{ article.title }}
+                        </a>
+                    </h3>
+                    <p style="color: #666; margin: 0 0 10px 0; line-height: 1.5;">
+                        {{ article.summary }}
+                    </p>
+                    <div style="font-size: 14px; color: #999;">
+                        <span>{{ article.date }}</span> • 
+                        <span>{{ article.category }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            """
+        
+        html_template = Template(template)
+        html_content = html_template.render(articles=articles)
+        
+        return HTMLResponse(content=html_content)
     
-    html_template = Template(template)
-    html_content = html_template.render(articles=articles)
-    
-    return HTMLResponse(content=html_content)
+    except Exception as e:
+        logger.error(f"Error in wordpress_articles_widget: {e}")
+        return HTMLResponse(content=f"<div>Error loading articles: {str(e)}</div>", status_code=500)
 
 @app.get("/api/wordpress-feed")
 async def wordpress_feed(
@@ -408,40 +379,84 @@ async def wordpress_feed(
 ):
     """JSON API for WordPress AJAX calls"""
     
-    query = db.query(ProcessedContent).join(ScrapedContent).order_by(
-        desc(ProcessedContent.processed_at)
-    )
-    
-    if category:
-        query = query.filter(ProcessedContent.category.ilike(f"%{category}%"))
-    
-    content = query.limit(limit).all()
-    
-    articles = []
-    for item in content:
-        scraped = db.query(ScrapedContent).filter(
-            ScrapedContent.id == item.scraped_content_id
-        ).first()
+    try:
+        query = db.query(ScrapedContent).order_by(desc(ScrapedContent.scraped_at))
         
-        articles.append({
-            'id': item.id,
-            'title': item.seo_title,
-            'summary': item.summary,
-            'description': item.seo_description,
-            'url': scraped.original_url,
-            'date': item.processed_at.isoformat(),
-            'category': item.category,
-            'hashtags': item.hashtags,
-            'keywords': item.keywords,
-            'source': scraped.source_name
-        })
+        if category:
+            query = query.filter(
+                ScrapedContent.source_name.ilike(f"%{category}%") |
+                ScrapedContent.title.ilike(f"%{category}%")
+            )
+        
+        content = query.limit(limit).all()
+        
+        articles = []
+        for item in content:
+            articles.append({
+                'id': item.id,
+                'title': item.title,
+                'summary': item.content or "No content available",
+                'description': item.title,
+                'url': item.original_url,
+                'date': item.scraped_at.isoformat(),
+                'category': item.source_name,
+                'hashtags': [],
+                'keywords': [],
+                'source': item.source_name
+            })
+        
+        return {
+            'status': 'success',
+            'count': len(articles),
+            'articles': articles,
+            'last_updated': datetime.utcnow().isoformat()
+        }
     
-    return {
-        'status': 'success',
-        'count': len(articles),
-        'articles': articles,
-        'last_updated': datetime.utcnow().isoformat()
-    }
+    except Exception as e:
+        logger.error(f"Error in wordpress_feed: {e}")
+        return {
+            'status': 'error',
+            'message': str(e),
+            'articles': [],
+            'count': 0
+        }
+
+# Simple widget for immediate testing
+@app.get("/widgets/simple-articles", response_class=HTMLResponse)
+async def simple_articles_widget(limit: int = 5, db: Session = Depends(get_db)):
+    """Simple article widget for testing"""
+    try:
+        articles = db.query(ScrapedContent).order_by(desc(ScrapedContent.scraped_at)).limit(limit).all()
+
+        html = """
+        <div style="font-family: Arial, sans-serif; max-width: 800px;">
+            <h3 style="color: #0073aa; border-bottom: 2px solid #0073aa; padding-bottom: 10px;">
+                🤖 Latest AI News
+            </h3>
+        """
+        
+        for article in articles:
+            html += f"""
+            <div style="border: 1px solid #ddd; margin: 15px 0; padding: 15px; border-radius: 8px;">
+                <h4 style="margin: 0 0 10px 0;">
+                    <a href="{article.original_url}" target="_blank" style="color: #0073aa; text-decoration: none;">
+                        {article.title}
+                    </a>
+                </h4>
+                <p style="color: #666; margin: 0 0 10px 0; font-size: 14px;">
+                    Source: {article.source_name} • 
+                    {article.scraped_at.strftime('%B %d, %Y')}
+                </p>
+                {f'<p style="color: #444; line-height: 1.5;">{article.content[:200]}...</p>' if article.content else ''}
+            </div>
+            """
+        
+        html += "</div>"
+        return HTMLResponse(content=html)
+
+    except Exception as e:
+        logger.error(f"Error in simple_articles_widget: {e}")
+        return HTMLResponse(content=f"<div>Error loading articles: {str(e)}</div>", status_code=500)
 
 # Helper functions
 def get_time_ago(date):
@@ -462,34 +477,10 @@ def get_time_ago(date):
 
 def estimate_reading_time(text):
     """Estimate reading time in minutes"""
+    if not text:
+        return 1
     words = len(text.split())
     return max(1, round(words / 200))  # Average 200 words per minute
-
-from fastapi.responses import HTMLResponse
-from fastapi import Depends
-from sqlalchemy.orm import Session
-
-from services.shared.database import get_db
-from services.shared.models import ScrapedContent
-
-@app.get("/widgets/wordpress_articles", response_class=HTMLResponse)
-def render_wordpress_articles(limit: int = 5, db: Session = Depends(get_db)):
-    try:
-        articles = db.query(ScrapedContent) \
-                     .order_by(ScrapedContent.published_at.desc()) \
-                     .limit(limit).all()
-
-        html = "<h3>Latest AI News</h3><ul>"
-        for article in articles:
-            html += f'<li><a href="{article.original_url}" target="_blank">{article.title}</a></li>'
-        html += "</ul>"
-
-        return HTMLResponse(content=html)
-
-    except Exception as e:
-        return HTMLResponse(content=f"<h3>Error loading articles</h3><pre>{e}</pre>", status_code=500)
-
-
 
 if __name__ == "__main__":
     uvicorn.run(
